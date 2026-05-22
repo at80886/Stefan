@@ -1,0 +1,29 @@
+# Python cache and build outputs
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+build/
+dist/
+*.egg-info/
+
+# Local environments
+.venv/
+venv/
+env/
+
+# Application/runtime outputs
+*.log
+*.tmp
+exports/
+output/
+results/
+
+# Local editor and OS metadata
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
