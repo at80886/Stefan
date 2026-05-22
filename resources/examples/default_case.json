@@ -1,0 +1,14 @@
+{
+  "domain_length": 1.0,
+  "node_count": 101,
+  "initial_temperature": 273.15,
+  "melting_temperature": 273.15,
+  "left_boundary_temperature": 293.15,
+  "right_boundary_temperature": 273.15,
+  "thermal_diffusivity": 0.0001,
+  "stefan_number": 1.0,
+  "phase_change_interval": 0.5,
+  "time_step": 0.01,
+  "duration": 1.0,
+  "output_stride": 1
+}

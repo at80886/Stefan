@@ -1,0 +1,17 @@
+QMainWindow {
+    background: #f7f7f4;
+}
+
+QLabel#appTitle {
+    font-size: 20px;
+    font-weight: 600;
+}
+
+QFrame#plotPanel {
+    background: #ffffff;
+    border: 1px solid #c9d2d9;
+}
+
+QGroupBox {
+    font-weight: 600;
+}

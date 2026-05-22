@@ -23,7 +23,9 @@ output/
 results/
 
 # Local editor and OS metadata
-.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 .idea/
 Thumbs.db
 Desktop.ini

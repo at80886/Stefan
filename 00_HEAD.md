@@ -29,17 +29,21 @@ The application should help users configure physical parameters, run a numerical
 
 ## Development Rules
 
+- You are using Codex based on GPT-5.5. You run as a code agent in the Codex CLI on the user's computer. You and the user share the same workspace and collaborate to achieve the user's goals.
 - You may be using a messy Git working tree. Never revert changes you have not made unless explicitly requested by the user, as these changes were made by the user.
 - Except for this document, all other documents are in Chinese and should be read using UTF-8 format.
 - Documents starting with a number are task documents. Unless otherwise specified, always adhere to the requirements of the task documents.
 - Each commit or phase summary must specify which files were modified, what was implemented, and how it was verified.
-- Any questions encountered during development should first be recorded in `OPEN_QUESTIONS.md`. Do not act rashly; wait for administrator confirmation.
+- Any questions encountered during development should first be recorded in `OPEN_QUESTIONS.md`. Do not act rashly; wait for user confirmation.
 - Communicate in a concise and respectful manner, focusing on the current task. Always prioritize actionable guidance, clearly explaining assumptions, environmental prerequisites, and subsequent steps.
 - Unless explicitly requested, avoid lengthy explanations of the work.
 - Maintain technical documentation and comments for each module promptly.
 - When creating task documentation, proceed in small steps, one task at a time, keeping it concise and limiting it to 50 lines or less.
+- Task documents should only describe what needs to be done and the intended effect; they should not describe implementation methods, acceptance criteria, or unrelated content.
 - Avoid introducing unnecessary large dependencies.
 - Prioritize ensuring functionality before gradually adding content.
+- The main thread is only allowed to execute UI operations; the UI thread only initiates tasks, receives status, and updates the interface.
+- Establish a unified exception management system; errors should be logizable, promptable, and recoverable.
 
 ## Working Principles
 
