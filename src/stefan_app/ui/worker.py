@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from threading import Event
+from time import monotonic
 
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 
@@ -29,6 +30,8 @@ class SimulationWorker(QObject):
         self._pause_event = Event()
         self._pause_event.set()
         self._stop_event = Event()
+        self._last_progress_emit_time = 0.0
+        self._progress_emit_interval_seconds = 0.08
 
     @pyqtSlot()
     def run(self) -> None:
@@ -65,4 +68,12 @@ class SimulationWorker(QObject):
                 raise SimulationCancelled()
         if self._stop_event.is_set():
             raise SimulationCancelled()
-        self.progress_changed.emit(state)
+        now = monotonic()
+        should_emit = (
+            self._last_progress_emit_time == 0.0
+            or state.status == "completed"
+            or now - self._last_progress_emit_time >= self._progress_emit_interval_seconds
+        )
+        if should_emit:
+            self.progress_changed.emit(state)
+            self._last_progress_emit_time = now

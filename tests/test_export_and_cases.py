@@ -45,29 +45,36 @@ class ExportAndCaseTests(unittest.TestCase):
         self.assertAlmostEqual(loaded.left_boundary.temperature, 294.0)
         self.assertEqual(parameters_to_dict(loaded)["left_boundary_temperature"], 294.0)
 
-    def test_result_bundle_exports_parameters_summary_interface_and_temperature_history(self) -> None:
+    def test_result_bundle_exports_parameters_summary_interface_and_final_temperature(self) -> None:
         parameters = StefanParameters(domain_length=0.05, node_count=11, duration=0.03, time_step=0.01)
         result = BaselineStefanSolver().run(parameters)
 
         with TemporaryDirectory() as directory:
             exported = export_result_bundle(result, parameters, Path(directory) / "result")
             parameter_payload = json.loads(exported.parameters.read_text(encoding="utf-8"))
-            with exported.summary.open(newline="", encoding="utf-8") as file:
+            with exported.summary.open(newline="", encoding="utf-8-sig") as file:
                 summary_rows = list(csv.reader(file))
             with exported.interface_history.open(newline="", encoding="utf-8") as file:
                 interface_rows = list(csv.reader(file))
             with exported.temperature_history.open(newline="", encoding="utf-8") as file:
                 temperature_rows = list(csv.reader(file))
+            summary_has_utf8_signature = exported.summary.read_bytes().startswith(b"\xef\xbb\xbf")
 
         self.assertEqual(exported.directory.name, "result")
+        self.assertEqual(exported.interface_history.name, "interface.csv")
+        self.assertEqual(exported.temperature_history.name, "temperature.csv")
+        self.assertTrue(summary_has_utf8_signature)
         self.assertEqual(parameter_payload["node_count"], parameters.node_count)
         self.assertIn(["metric", "value"], summary_rows)
-        self.assertIn("final_time", {row[0] for row in summary_rows[1:]})
+        self.assertEqual(
+            {row[0] for row in summary_rows[1:]},
+            {"final_time", "final_interface_position", "minimum_temperature", "maximum_temperature"},
+        )
         self.assertEqual(interface_rows[0], ["time", "interface_position"])
         self.assertEqual(len(interface_rows), len(result.times) + 1)
-        self.assertEqual(temperature_rows[0][0], "time")
-        self.assertEqual(len(temperature_rows[0]), parameters.node_count + 1)
-        self.assertEqual(len(temperature_rows), len(result.times) + 1)
+        self.assertEqual(temperature_rows[0], ["x", "temperature"])
+        self.assertEqual(len(temperature_rows), parameters.node_count + 1)
+        self.assertAlmostEqual(float(temperature_rows[-1][1]), result.temperatures[-1][-1])
 
 
 if __name__ == "__main__":

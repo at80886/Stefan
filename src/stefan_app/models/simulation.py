@@ -71,7 +71,10 @@ class SimulationState:
     status: str = "idle"
     step_index: int = 0
     progress: float = 0.0
+    total_duration: float = 0.0
     message: str = ""
+    x_coordinates: tuple[float, ...] = ()
+    temperatures: tuple[float, ...] = ()
 
 
 @dataclass(frozen=True)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
@@ -10,3 +11,9 @@ PROJECT_ROOT = SRC_ROOT.parent
 RESOURCE_ROOT = PROJECT_ROOT / "resources"
 STYLE_FILE = RESOURCE_ROOT / "styles" / "app.qss"
 EXAMPLE_CASE_FILE = RESOURCE_ROOT / "examples" / "default_case.json"
+APP_STATE_ROOT = (
+    Path(os.environ["LOCALAPPDATA"]) / "StefanSimulator"
+    if "LOCALAPPDATA" in os.environ
+    else Path.home() / ".stefan_app"
+)
+LAST_SESSION_PARAMETERS_FILE = APP_STATE_ROOT / "last_parameters.json"

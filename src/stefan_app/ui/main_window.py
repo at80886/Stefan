@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from time import monotonic
 
 from PyQt6.QtCore import QThread, Qt, pyqtSignal
 from PyQt6.QtWidgets import (
@@ -34,7 +35,7 @@ from stefan_app.models import (
 from stefan_app.ui.plot_widgets import SimulationPlotWidget
 from stefan_app.ui.worker import SimulationWorker
 from stefan_app.utils.exceptions import StefanAppError
-from stefan_app.utils.paths import EXAMPLE_CASE_FILE
+from stefan_app.utils.paths import EXAMPLE_CASE_FILE, LAST_SESSION_PARAMETERS_FILE
 
 
 class MainWindow(QMainWindow):
@@ -43,23 +44,32 @@ class MainWindow(QMainWindow):
     simulation_completed = pyqtSignal(object)
     simulation_failed = pyqtSignal(str)
 
-    def __init__(self) -> None:
+    def __init__(self, session_parameters_file: Path | None = None) -> None:
         super().__init__()
+        self._session_parameters_file = session_parameters_file or LAST_SESSION_PARAMETERS_FILE
         self._thread: QThread | None = None
         self._worker: SimulationWorker | None = None
         self._last_result: SimulationResult | None = None
         self._last_parameters: StefanParameters | None = None
         self._is_paused = False
         self._suppress_stop_error = False
+        self._realtime_x_coordinates: tuple[float, ...] = ()
+        self._realtime_times: list[float] = []
+        self._realtime_positions: list[float] = []
+        self._realtime_temperatures: list[tuple[float, ...]] = []
+        self._realtime_states: list[SimulationState] = []
+        self._last_plot_refresh_time = 0.0
+        self._plot_refresh_interval_seconds = 0.08
 
         self.setWindowTitle("一维 Stefan 问题模拟器")
         self.resize(1180, 760)
         self._build_widgets()
         self.setStatusBar(QStatusBar(self))
         self._set_idle_state()
-        self._load_default_case()
+        self._load_startup_parameters()
 
     def closeEvent(self, event) -> None:  # noqa: ANN001 - Qt override signature.
+        self._save_last_session_parameters()
         self._stop_worker()
         super().closeEvent(event)
 
@@ -234,6 +244,27 @@ class MainWindow(QMainWindow):
         except StefanAppError as exc:
             self._update_message(exc.user_message)
 
+    def _load_startup_parameters(self) -> None:
+        if self._load_last_session_parameters():
+            return
+        self._load_default_case()
+
+    def _load_last_session_parameters(self) -> bool:
+        if not self._session_parameters_file.exists():
+            return False
+        try:
+            self._apply_parameters(load_parameters_json(self._session_parameters_file))
+        except StefanAppError as exc:
+            self._update_message(f"{exc.user_message} 已改用默认参数。")
+            return False
+        return True
+
+    def _save_last_session_parameters(self) -> None:
+        try:
+            save_parameters_json(self._collect_parameters(), self._session_parameters_file)
+        except StefanAppError as exc:
+            self._update_message(exc.user_message)
+
     def _load_case_file(self) -> None:
         target, _ = QFileDialog.getOpenFileName(
             self,
@@ -249,6 +280,7 @@ class MainWindow(QMainWindow):
             self._update_message(exc.user_message)
             return
         self._last_result = None
+        self._clear_realtime_result()
         self.plot_widget.set_result(None)
         self.export_button.setEnabled(False)
         self._update_message(f"已加载参数文件 {target}")
@@ -275,6 +307,7 @@ class MainWindow(QMainWindow):
         parameters = self._collect_parameters()
         self._last_result = None
         self._last_parameters = parameters
+        self._clear_realtime_result()
         self.plot_widget.set_result(None)
         self._is_paused = False
         self.pause_button.setText("暂停")
@@ -315,6 +348,7 @@ class MainWindow(QMainWindow):
             self._suppress_stop_error = True
             self._worker.stop()
         self._last_result = None
+        self._clear_realtime_result()
         self.plot_widget.set_result(None)
         self._set_idle_state()
 
@@ -330,7 +364,9 @@ class MainWindow(QMainWindow):
         self.interface_value.setText(f"{state.interface_position:.6f} m")
         self.progress_value.setText(f"{state.progress * 100:.0f}%")
         self.state_value.setText("运行中" if state.status == "running" else "已完成")
-        self.message_value.setText(state.message)
+        self.message_value.setText(state.message or "正在运行仿真...")
+        self._append_realtime_state(state)
+        self._maybe_refresh_realtime_plot(state)
 
     def _handle_result(self, result: SimulationResult) -> None:
         self._last_result = result
@@ -345,6 +381,49 @@ class MainWindow(QMainWindow):
         self.export_button.setEnabled(True)
         self.statusBar().showMessage("已完成")
         self.simulation_completed.emit(result)
+
+    def _clear_realtime_result(self) -> None:
+        self._realtime_x_coordinates = ()
+        self._realtime_times.clear()
+        self._realtime_positions.clear()
+        self._realtime_temperatures.clear()
+        self._realtime_states.clear()
+        self._last_plot_refresh_time = 0.0
+
+    def _append_realtime_state(self, state: SimulationState) -> None:
+        if not state.x_coordinates or not state.temperatures:
+            return
+        if not self._realtime_x_coordinates:
+            self._realtime_x_coordinates = state.x_coordinates
+        self._realtime_times.append(state.time)
+        self._realtime_positions.append(state.interface_position)
+        self._realtime_temperatures.append(state.temperatures)
+        self._realtime_states.append(state)
+
+    def _maybe_refresh_realtime_plot(self, state: SimulationState) -> None:
+        if not self._realtime_times:
+            return
+        now = monotonic()
+        should_refresh = (
+            self._last_plot_refresh_time == 0.0
+            or state.status == "completed"
+            or now - self._last_plot_refresh_time >= self._plot_refresh_interval_seconds
+        )
+        if not should_refresh:
+            return
+        self.plot_widget.set_result(self._build_realtime_result(state))
+        self._last_plot_refresh_time = now
+
+    def _build_realtime_result(self, state: SimulationState) -> SimulationResult:
+        return SimulationResult(
+            x_coordinates=self._realtime_x_coordinates,
+            times=tuple(self._realtime_times),
+            positions=tuple(self._realtime_positions),
+            temperatures=tuple(self._realtime_temperatures),
+            states=tuple(self._realtime_states),
+            status=state.status,
+            message=state.message,
+        )
 
     def _handle_error(self, message: str) -> None:
         if self._suppress_stop_error and message == "仿真已停止。":

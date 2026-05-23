@@ -40,7 +40,11 @@ class SimulationCoreTests(unittest.TestCase):
         self.assertAlmostEqual(result.times[-1], parameters.duration)
         self.assertEqual(len(result.times), len(result.positions))
         self.assertEqual(len(result.times), len(result.temperatures))
+        self.assertEqual(len(result.times), len(result.states))
         self.assertEqual(len(result.temperatures[-1]), parameters.node_count)
+        self.assertEqual(result.states[0].x_coordinates, result.x_coordinates)
+        self.assertEqual(result.states[-1].temperatures, result.temperatures[-1])
+        self.assertAlmostEqual(result.states[-1].total_duration, parameters.duration)
         self.assertGreaterEqual(result.positions[-1], result.positions[0])
         self.assertLessEqual(result.positions[-1], parameters.domain_length)
 

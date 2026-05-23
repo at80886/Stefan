@@ -10,6 +10,9 @@ from stefan_app.models import SimulationResult, StefanParameters
 from stefan_app.models.case_io import save_parameters_json
 from stefan_app.utils.exceptions import StefanAppError
 
+CSV_ENCODING = "utf-8"
+CSV_ENCODING_WITH_SIGNATURE = "utf-8-sig"
+
 
 @dataclass(frozen=True)
 class ExportedResultFiles:
@@ -26,10 +29,13 @@ def export_result_csv(result: SimulationResult, target: Path) -> Path:
     """Write time and interface position history to a CSV file."""
     try:
         target.parent.mkdir(parents=True, exist_ok=True)
-        with target.open("w", newline="", encoding="utf-8") as file:
+        with target.open("w", newline="", encoding=CSV_ENCODING) as file:
             writer = csv.writer(file)
             writer.writerow(["time", "interface_position"])
-            writer.writerows(zip(result.times, result.positions))
+            writer.writerows(
+                (_format_number(time), _format_number(position))
+                for time, position in zip(result.times, result.positions)
+            )
     except OSError as exc:
         raise StefanAppError("Unable to export interface history.", user_message="无法导出相界面轨迹。") from exc
     return target
@@ -45,8 +51,11 @@ def export_result_bundle(
         target_directory.mkdir(parents=True, exist_ok=True)
         parameter_file = save_parameters_json(parameters, target_directory / "parameters.json")
         summary_file = _write_summary_csv(result, target_directory / "summary.csv")
-        interface_file = export_result_csv(result, target_directory / "interface_history.csv")
-        temperature_file = _write_temperature_history_csv(result, target_directory / "temperature_history.csv")
+        interface_file = export_result_csv(result, target_directory / "interface.csv")
+        temperature_file = _write_temperature_distribution_csv(
+            result,
+            target_directory / "temperature.csv",
+        )
     except StefanAppError:
         raise
     except OSError as exc:
@@ -63,25 +72,34 @@ def export_result_bundle(
 def _write_summary_csv(result: SimulationResult, target: Path) -> Path:
     summary = result.summarize()
     rows = (
-        ("status", summary.status),
-        ("message", summary.message),
         ("final_time", summary.final_time),
         ("final_interface_position", summary.final_interface_position),
         ("minimum_temperature", summary.minimum_temperature),
         ("maximum_temperature", summary.maximum_temperature),
-        ("stored_steps", summary.stored_steps),
     )
-    with target.open("w", newline="", encoding="utf-8") as file:
+    with target.open("w", newline="", encoding=CSV_ENCODING_WITH_SIGNATURE) as file:
         writer = csv.writer(file)
         writer.writerow(["metric", "value"])
-        writer.writerows(rows)
+        writer.writerows((metric, _format_cell(value)) for metric, value in rows)
     return target
 
 
-def _write_temperature_history_csv(result: SimulationResult, target: Path) -> Path:
-    with target.open("w", newline="", encoding="utf-8") as file:
+def _write_temperature_distribution_csv(result: SimulationResult, target: Path) -> Path:
+    """Write the final temperature distribution only."""
+    final_temperatures = result.temperatures[-1] if result.temperatures else ()
+    with target.open("w", newline="", encoding=CSV_ENCODING) as file:
         writer = csv.writer(file)
-        writer.writerow(["time", *(f"x={coordinate:.12g}" for coordinate in result.x_coordinates)])
-        for time, temperatures in zip(result.times, result.temperatures):
-            writer.writerow([time, *temperatures])
+        writer.writerow(["x", "temperature"])
+        for x_coordinate, temperature in zip(result.x_coordinates, final_temperatures):
+            writer.writerow([_format_number(x_coordinate), _format_number(temperature)])
     return target
+
+
+def _format_cell(value: object) -> object:
+    if isinstance(value, float):
+        return _format_number(value)
+    return value
+
+
+def _format_number(value: float) -> str:
+    return f"{value:.12g}"

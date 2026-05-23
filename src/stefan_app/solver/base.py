@@ -37,6 +37,7 @@ class BaselineStefanSolver:
         self._record_state(
             parameters,
             temperatures,
+            x_coordinates=x_coordinates,
             time=0.0,
             step_index=0,
             step_count=step_count,
@@ -56,6 +57,7 @@ class BaselineStefanSolver:
                 self._record_state(
                     parameters,
                     temperatures,
+                    x_coordinates=x_coordinates,
                     time=time,
                     step_index=step_index,
                     step_count=step_count,
@@ -131,6 +133,7 @@ class BaselineStefanSolver:
         parameters: StefanParameters,
         temperatures: list[float],
         *,
+        x_coordinates: tuple[float, ...],
         time: float,
         step_index: int,
         step_count: int,
@@ -142,15 +145,20 @@ class BaselineStefanSolver:
     ) -> None:
         position = self._interface_position(parameters, temperatures)
         progress = 1.0 if step_count == 0 else min(1.0, step_index / step_count)
+        temperature_snapshot = tuple(temperatures)
         times.append(time)
         positions.append(position)
-        temperature_history.append(tuple(temperatures))
+        temperature_history.append(temperature_snapshot)
         state = SimulationState(
             time=time,
             interface_position=position,
             status="completed" if progress >= 1.0 else "running",
             step_index=step_index,
             progress=progress,
+            total_duration=parameters.duration,
+            message="基线仿真已完成。" if progress >= 1.0 else "正在运行仿真...",
+            x_coordinates=x_coordinates,
+            temperatures=temperature_snapshot,
         )
         states.append(state)
         if progress_callback is not None:

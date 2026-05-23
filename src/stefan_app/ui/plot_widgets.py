@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from math import ceil, floor, isclose, log10
+
 from PyQt6.QtCore import QPointF, QRectF, Qt
 from PyQt6.QtGui import QBrush, QColor, QFont, QLinearGradient, QPainter, QPen
 from PyQt6.QtWidgets import QTabWidget, QVBoxLayout, QWidget
@@ -25,8 +27,8 @@ class SimulationPlotWidget(QWidget):
         self.interface_plot = InterfaceTimePlot(self)
         self.cloud_plot = TemperatureCloudPlot(self)
         self.tabs.addTab(self.temperature_plot, "温度分布")
-        self.tabs.addTab(self.interface_plot, "相界面-时间")
-        self.tabs.addTab(self.cloud_plot, "温度云图")
+        self.tabs.addTab(self.interface_plot, "界面位置")
+        self.tabs.addTab(self.cloud_plot, "云图")
         layout.addWidget(self.tabs)
 
     def set_result(self, result: SimulationResult | None) -> None:
@@ -83,20 +85,22 @@ class _ResultCanvas(QWidget):
         x_label: str,
         y_label: str,
     ) -> None:
-        x_span = _nonzero_span(x_minimum, x_maximum)
-        y_span = _nonzero_span(y_minimum, y_maximum)
+        x_ticks = _nice_ticks(x_minimum, x_maximum, self.tick_count)
+        y_ticks = _nice_ticks(y_minimum, y_maximum, self.tick_count)
+        x_minimum, x_maximum = x_ticks[0], x_ticks[-1]
+        y_minimum, y_maximum = y_ticks[0], y_ticks[-1]
         painter.setPen(QPen(QColor("#c8d1d8"), 1))
-        for index in range(self.tick_count + 1):
-            x = plot_rect.left() + plot_rect.width() * index / self.tick_count
-            y = plot_rect.bottom() - plot_rect.height() * index / self.tick_count
+        for x_value in x_ticks:
+            x = _map_linear(x_value, x_minimum, x_maximum, plot_rect.left(), plot_rect.right())
             painter.drawLine(QPointF(x, plot_rect.top()), QPointF(x, plot_rect.bottom()))
+        for y_value in y_ticks:
+            y = _map_linear(y_value, y_minimum, y_maximum, plot_rect.bottom(), plot_rect.top())
             painter.drawLine(QPointF(plot_rect.left(), y), QPointF(plot_rect.right(), y))
 
         painter.setPen(QPen(QColor("#52616b"), 1))
         painter.drawRect(plot_rect)
-        for index in range(self.tick_count + 1):
-            x_value = x_minimum + x_span * index / self.tick_count
-            x = plot_rect.left() + plot_rect.width() * index / self.tick_count
+        for x_value in x_ticks:
+            x = _map_linear(x_value, x_minimum, x_maximum, plot_rect.left(), plot_rect.right())
             painter.drawLine(QPointF(x, plot_rect.bottom()), QPointF(x, plot_rect.bottom() + 5))
             painter.drawText(
                 QRectF(x - 36, plot_rect.bottom() + 8, 72, 18),
@@ -104,8 +108,8 @@ class _ResultCanvas(QWidget):
                 _format_tick(x_value),
             )
 
-            y_value = y_minimum + y_span * index / self.tick_count
-            y = plot_rect.bottom() - plot_rect.height() * index / self.tick_count
+        for y_value in y_ticks:
+            y = _map_linear(y_value, y_minimum, y_maximum, plot_rect.bottom(), plot_rect.top())
             painter.drawLine(QPointF(plot_rect.left() - 5, y), QPointF(plot_rect.left(), y))
             painter.drawText(
                 QRectF(34, y - 9, plot_rect.left() - 44, 18),
@@ -120,6 +124,7 @@ class _ResultCanvas(QWidget):
             x_label,
         )
         self._draw_rotated_y_label(painter, plot_rect, y_label)
+        return x_minimum, x_maximum, y_minimum, y_maximum
 
     def _draw_rotated_y_label(self, painter: QPainter, plot_rect: QRectF, label: str) -> None:
         painter.save()
@@ -185,7 +190,7 @@ class TemperatureDistributionPlot(_ResultCanvas):
 
         y_minimum, y_maximum = _padded_range(temperatures)
         x_minimum, x_maximum = x_coordinates[0], x_coordinates[-1]
-        self._draw_axes(
+        axis_minimums = self._draw_axes(
             painter,
             plot_rect,
             x_minimum=x_minimum,
@@ -195,6 +200,7 @@ class TemperatureDistributionPlot(_ResultCanvas):
             x_label="位置 x (m)",
             y_label="温度 T (K)",
         )
+        x_minimum, x_maximum, y_minimum, y_maximum = axis_minimums
         points = [
             self._map_point(
                 plot_rect,
@@ -216,14 +222,14 @@ class InterfaceTimePlot(_ResultCanvas):
 
     def paintEvent(self, event) -> None:  # noqa: ANN001 - Qt override signature.
         painter = QPainter(self)
-        plot_rect = self._prepare_painter(painter, "相界面-时间图")
+        plot_rect = self._prepare_painter(painter, "界面位置")
         if self._result is None or len(self._result.times) < 2 or len(self._result.positions) < 2:
             self._draw_empty_message(painter, plot_rect)
             return
 
-        x_minimum, x_maximum = self._result.times[0], self._result.times[-1]
-        y_minimum, y_maximum = _padded_range(self._result.positions)
-        self._draw_axes(
+        x_minimum, x_maximum = _interface_time_range(self._result)
+        y_minimum, y_maximum = _interface_position_range(self._result)
+        axis_minimums = self._draw_axes(
             painter,
             plot_rect,
             x_minimum=x_minimum,
@@ -233,6 +239,7 @@ class InterfaceTimePlot(_ResultCanvas):
             x_label="时间 t (s)",
             y_label="界面位置 s (m)",
         )
+        x_minimum, x_maximum, y_minimum, y_maximum = axis_minimums
         points = [
             self._map_point(
                 plot_rect,
@@ -378,10 +385,10 @@ class TemperatureCloudPlot(_ResultCanvas):
         axis_y = domain_rect.bottom() + 30
         painter.setPen(QPen(QColor("#52616b"), 1))
         painter.drawLine(QPointF(domain_rect.left(), axis_y), QPointF(domain_rect.right(), axis_y))
-        x_span = _nonzero_span(x_minimum, x_maximum)
-        for index in range(self.tick_count + 1):
-            x_value = x_minimum + x_span * index / self.tick_count
-            x = domain_rect.left() + domain_rect.width() * index / self.tick_count
+        ticks = _nice_ticks(x_minimum, x_maximum, self.tick_count)
+        axis_minimum, axis_maximum = ticks[0], ticks[-1]
+        for x_value in ticks:
+            x = _map_linear(x_value, axis_minimum, axis_maximum, domain_rect.left(), domain_rect.right())
             painter.drawLine(QPointF(x, axis_y - 5), QPointF(x, axis_y + 5))
             painter.drawText(QRectF(x - 40, axis_y + 8, 80, 18), Qt.AlignmentFlag.AlignCenter, _format_tick(x_value))
         painter.setPen(QColor("#2f3f46"))
@@ -421,11 +428,10 @@ class TemperatureCloudPlot(_ResultCanvas):
         painter.fillRect(bar_rect, QBrush(gradient))
         painter.setPen(QPen(QColor("#52616b"), 1))
         painter.drawRect(bar_rect)
-        span = _nonzero_span(temperature_minimum, temperature_maximum)
-        for index in range(self.tick_count + 1):
-            ratio = index / self.tick_count
-            y = bar_rect.bottom() - bar_rect.height() * ratio
-            value = temperature_minimum + span * ratio
+        ticks = _nice_ticks(temperature_minimum, temperature_maximum, self.tick_count)
+        axis_minimum, axis_maximum = ticks[0], ticks[-1]
+        for value in ticks:
+            y = _map_linear(value, axis_minimum, axis_maximum, bar_rect.bottom(), bar_rect.top())
             painter.drawLine(QPointF(bar_rect.right(), y), QPointF(bar_rect.right() + 5, y))
             painter.drawText(
                 QRectF(bar_rect.right() + 8, y - 9, 68, 18),
@@ -453,6 +459,62 @@ def _nonzero_span(minimum: float, maximum: float) -> float:
     return maximum - minimum if abs(maximum - minimum) > 1.0e-12 else 1.0
 
 
+def _interface_time_range(result: SimulationResult) -> tuple[float, float]:
+    total_duration = result.states[-1].total_duration if result.states else 0.0
+    maximum = max(total_duration, result.times[-1])
+    return 0.0, maximum if maximum > 0.0 else 1.0
+
+
+def _interface_position_range(result: SimulationResult) -> tuple[float, float]:
+    if len(result.x_coordinates) >= 2:
+        return min(result.x_coordinates[0], result.x_coordinates[-1]), max(result.x_coordinates[0], result.x_coordinates[-1])
+    if result.positions:
+        return _padded_range(result.positions)
+    return 0.0, 1.0
+
+
+def _nice_ticks(minimum: float, maximum: float, interval_count: int) -> list[float]:
+    if interval_count < 1:
+        return [minimum, maximum]
+    if minimum > maximum:
+        minimum, maximum = maximum, minimum
+    if isclose(minimum, maximum, rel_tol=0.0, abs_tol=1.0e-12):
+        padding = abs(minimum) * 0.05 if abs(minimum) > 1.0e-12 else 1.0
+        minimum -= padding
+        maximum += padding
+    step = _nice_step((maximum - minimum) / interval_count)
+    nice_minimum = floor(minimum / step) * step
+    nice_maximum = ceil(maximum / step) * step
+    ticks = [nice_minimum + step * index for index in range(int(round((nice_maximum - nice_minimum) / step)) + 1)]
+    if len(ticks) < 2:
+        ticks.append(ticks[0] + step)
+    return [_clean_tick(value) for value in ticks]
+
+
+def _nice_step(raw_step: float) -> float:
+    if raw_step <= 0:
+        return 1.0
+    exponent = floor(log10(raw_step))
+    fraction = raw_step / (10**exponent)
+    if fraction <= 1:
+        nice_fraction = 1
+    elif fraction <= 2:
+        nice_fraction = 2
+    elif fraction <= 2.5:
+        nice_fraction = 2.5
+    elif fraction <= 5:
+        nice_fraction = 5
+    else:
+        nice_fraction = 10
+    return nice_fraction * (10**exponent)
+
+
+def _clean_tick(value: float) -> float:
+    if abs(value) < 1.0e-12:
+        return 0.0
+    return round(value, 12)
+
+
 def _plain_range(values: tuple[float, ...] | list[float]) -> tuple[float, float]:
     if not values:
         return 0.0, 1.0
@@ -473,9 +535,8 @@ def _padded_range(values: tuple[float, ...] | list[float]) -> tuple[float, float
 def _format_tick(value: float) -> str:
     if abs(value) >= 1000 or (0 < abs(value) < 0.001):
         return f"{value:.2e}"
-    if abs(value) >= 10:
-        return f"{value:.2f}"
-    return f"{value:.4g}"
+    text = f"{value:.6f}".rstrip("0").rstrip(".")
+    return text or "0"
 
 
 def _edges(values: tuple[float, ...]) -> list[float]:
