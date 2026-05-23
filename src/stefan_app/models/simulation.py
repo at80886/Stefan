@@ -19,7 +19,7 @@ class BoundaryCondition:
         if self.location not in {"left", "right"}:
             raise StefanAppError(
                 f"Unsupported boundary location: {self.location}",
-                user_message="Boundary location must be left or right.",
+                user_message="边界位置必须为 left 或 right。",
             )
 
 
@@ -45,21 +45,21 @@ class StefanParameters:
         self.left_boundary.validate()
         self.right_boundary.validate()
         if self.domain_length <= 0:
-            raise StefanAppError("Domain length must be positive.")
+            raise StefanAppError("Domain length must be positive.", user_message="计算域长度必须大于 0。")
         if self.node_count < 3:
-            raise StefanAppError("Node count must be at least 3.")
+            raise StefanAppError("Node count must be at least 3.", user_message="节点数量至少为 3。")
         if self.thermal_diffusivity <= 0:
-            raise StefanAppError("Thermal diffusivity must be positive.")
+            raise StefanAppError("Thermal diffusivity must be positive.", user_message="热扩散率必须大于 0。")
         if self.stefan_number <= 0:
-            raise StefanAppError("Stefan number must be positive.")
+            raise StefanAppError("Stefan number must be positive.", user_message="Stefan 数必须大于 0。")
         if self.phase_change_interval <= 0:
-            raise StefanAppError("Phase change interval must be positive.")
+            raise StefanAppError("Phase change interval must be positive.", user_message="相变温度区间必须大于 0。")
         if self.time_step <= 0:
-            raise StefanAppError("Time step must be positive.")
+            raise StefanAppError("Time step must be positive.", user_message="时间步长必须大于 0。")
         if self.duration < 0:
-            raise StefanAppError("Duration cannot be negative.")
+            raise StefanAppError("Duration cannot be negative.", user_message="仿真时长不能为负数。")
         if self.output_stride < 1:
-            raise StefanAppError("Output stride must be at least 1.")
+            raise StefanAppError("Output stride must be at least 1.", user_message="输出间隔至少为 1。")
 
 
 @dataclass

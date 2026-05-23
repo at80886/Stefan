@@ -21,7 +21,7 @@ def run(argv: Sequence[str] | None = None) -> int:
     from stefan_app.ui.main_window import MainWindow
 
     application = QApplication(list(argv or []))
-    application.setApplicationName("Stefan 1D Simulator")
+    application.setApplicationName("一维 Stefan 问题模拟器")
     application.setStyleSheet(load_style_text())
 
     window = MainWindow()

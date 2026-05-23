@@ -84,7 +84,7 @@ class SimulationCoreTests(unittest.TestCase):
         with self.assertRaises(StefanAppError) as context:
             BaselineStefanSolver().run(parameters)
 
-        self.assertIn("time step", context.exception.user_message.lower())
+        self.assertIn("时间步长", context.exception.user_message)
         self.assertTrue(context.exception.recoverable)
 
 

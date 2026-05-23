@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import runpy
 import sys
 import unittest
 from pathlib import Path
@@ -28,6 +29,13 @@ class FrameworkImportTests(unittest.TestCase):
         self.assertTrue(RESOURCE_ROOT.exists())
         self.assertTrue(STYLE_FILE.exists())
         self.assertTrue(EXAMPLE_CASE_FILE.exists())
+
+    def test_main_file_can_be_loaded_when_run_directly(self) -> None:
+        main_file = SRC_ROOT / "stefan_app" / "main.py"
+
+        module_globals = runpy.run_path(str(main_file), run_name="stefan_app_main_import_check")
+
+        self.assertIn("main", module_globals)
 
 
 if __name__ == "__main__":

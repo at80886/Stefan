@@ -7,6 +7,12 @@ from stefan_app.models.simulation import (
     SimulationSummary,
     StefanParameters,
 )
+from stefan_app.models.case_io import (
+    load_parameters_json,
+    parameters_from_dict,
+    parameters_to_dict,
+    save_parameters_json,
+)
 
 __all__ = [
     "BoundaryCondition",
@@ -14,4 +20,8 @@ __all__ = [
     "SimulationState",
     "SimulationSummary",
     "StefanParameters",
+    "load_parameters_json",
+    "parameters_from_dict",
+    "parameters_to_dict",
+    "save_parameters_json",
 ]

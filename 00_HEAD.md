@@ -12,6 +12,7 @@ The application should help users configure physical parameters, run a numerical
 - Development software: VSCode.
 - Environment: conda virtual environment `py39`, installed under `D:\Anaconda`.
 - Use UTF-8 for reading and writing all project documents.
+- 界面语言：中文。
 - Avoid unnecessary large dependencies. Prefer the Python standard library and small, well-maintained packages already justified by the task.
 
 ## Core Functions

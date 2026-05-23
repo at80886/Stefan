@@ -2,24 +2,27 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from math import ceil
 from typing import Protocol
 
 from stefan_app.models import SimulationResult, SimulationState, StefanParameters
 from stefan_app.utils.exceptions import StefanAppError
 
+ProgressCallback = Callable[[SimulationState], None]
+
 
 class StefanSolver(Protocol):
     """Protocol implemented by concrete Stefan problem solvers."""
 
-    def run(self, parameters: StefanParameters) -> SimulationResult:
+    def run(self, parameters: StefanParameters, progress_callback: ProgressCallback | None = None) -> SimulationResult:
         """Run a simulation and return result data."""
 
 
 class BaselineStefanSolver:
     """Pure Python baseline solver for one-dimensional Stefan simulations."""
 
-    def run(self, parameters: StefanParameters) -> SimulationResult:
+    def run(self, parameters: StefanParameters, progress_callback: ProgressCallback | None = None) -> SimulationResult:
         """Run an explicit apparent-heat-capacity simulation."""
         self._validate_stability(parameters)
         x_coordinates = self._build_x_coordinates(parameters)
@@ -41,6 +44,7 @@ class BaselineStefanSolver:
             positions=positions,
             temperature_history=temperature_history,
             states=states,
+            progress_callback=progress_callback,
         )
 
         time = 0.0
@@ -59,6 +63,7 @@ class BaselineStefanSolver:
                     positions=positions,
                     temperature_history=temperature_history,
                     states=states,
+                    progress_callback=progress_callback,
                 )
 
         return SimulationResult(
@@ -68,7 +73,7 @@ class BaselineStefanSolver:
             temperatures=tuple(temperature_history),
             states=tuple(states),
             status="completed",
-            message="Baseline simulation completed.",
+            message="基线仿真已完成。",
         )
 
     def _validate_stability(self, parameters: StefanParameters) -> None:
@@ -78,7 +83,7 @@ class BaselineStefanSolver:
         if parameters.time_step > maximum_time_step:
             raise StefanAppError(
                 f"Time step {parameters.time_step} exceeds explicit stability limit {maximum_time_step}.",
-                user_message="The time step is too large for the baseline explicit solver.",
+                user_message="当前时间步长过大，不满足基线显式求解器的稳定性要求。",
                 recoverable=True,
             )
 
@@ -133,21 +138,23 @@ class BaselineStefanSolver:
         positions: list[float],
         temperature_history: list[tuple[float, ...]],
         states: list[SimulationState],
+        progress_callback: ProgressCallback | None,
     ) -> None:
         position = self._interface_position(parameters, temperatures)
         progress = 1.0 if step_count == 0 else min(1.0, step_index / step_count)
         times.append(time)
         positions.append(position)
         temperature_history.append(tuple(temperatures))
-        states.append(
-            SimulationState(
-                time=time,
-                interface_position=position,
-                status="completed" if progress >= 1.0 else "running",
-                step_index=step_index,
-                progress=progress,
-            )
+        state = SimulationState(
+            time=time,
+            interface_position=position,
+            status="completed" if progress >= 1.0 else "running",
+            step_index=step_index,
+            progress=progress,
         )
+        states.append(state)
+        if progress_callback is not None:
+            progress_callback(state)
 
     def _active_boundary_side(self, parameters: StefanParameters) -> str:
         left_delta = parameters.left_boundary.temperature - parameters.melting_temperature
