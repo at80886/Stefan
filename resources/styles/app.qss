@@ -1,17 +1,219 @@
 QMainWindow {
-    background: #f7f7f4;
+    background: #0e1114;
+    color: #dce7ea;
+}
+
+QWidget#mainContainer {
+    background: #0e1114;
+}
+
+QWidget#appHeader {
+    background: #151a1e;
+    border: 1px solid #2b383d;
+    border-radius: 6px;
+}
+
+QLabel {
+    color: #c9d7da;
+    font-family: "Microsoft YaHei UI";
 }
 
 QLabel#appTitle {
-    font-size: 20px;
-    font-weight: 600;
-}
-
-QFrame#plotPanel {
-    background: #ffffff;
-    border: 1px solid #c9d2d9;
+    color: #edf6f7;
+    font-size: 21px;
+    font-weight: 700;
 }
 
 QGroupBox {
+    background: #151a1e;
+    border: 1px solid #2b383d;
+    border-radius: 6px;
+    color: #e4eef0;
+    font-size: 14px;
+    font-weight: 700;
+    margin-top: 18px;
+    padding: 16px 12px 12px 12px;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    left: 12px;
+    padding: 0 6px;
+    color: #8fd8d0;
+    background: #151a1e;
+}
+
+QGroupBox#plotPanel {
+    background: #11161a;
+}
+
+QSplitter::handle {
+    background: #0e1114;
+    border: 1px solid #253036;
+    margin: 4px 2px;
+}
+
+QPushButton {
+    background: #20282d;
+    border: 1px solid #3b4b52;
+    border-radius: 5px;
+    color: #dce7ea;
     font-weight: 600;
+    min-height: 30px;
+    padding: 5px 12px;
+}
+
+QPushButton:hover {
+    background: #2a3338;
+    border-color: #5a7678;
+}
+
+QPushButton:pressed {
+    background: #182024;
+    border-color: #79d6cf;
+}
+
+QPushButton:disabled {
+    background: #171c20;
+    border-color: #293237;
+    color: #59666b;
+}
+
+QPushButton#startButton {
+    background: #16766e;
+    border-color: #35bdb1;
+    color: #f4ffff;
+}
+
+QPushButton#startButton:hover {
+    background: #1b8a81;
+}
+
+QPushButton#resetButton {
+    border-color: #735c34;
+    color: #f0c879;
+}
+
+QPushButton#exportButton:enabled {
+    border-color: #5f8c42;
+    color: #b7e684;
+}
+
+QDoubleSpinBox,
+QSpinBox {
+    background: #0f1417;
+    border: 1px solid #314046;
+    border-radius: 4px;
+    color: #f0f7f8;
+    min-height: 26px;
+    padding: 3px 8px;
+    selection-background-color: #1d837a;
+}
+
+QDoubleSpinBox:focus,
+QSpinBox:focus {
+    border-color: #52d5cb;
+}
+
+QDoubleSpinBox:disabled,
+QSpinBox:disabled {
+    background: #15191c;
+    color: #657277;
+}
+
+QTabWidget::pane {
+    background: #101519;
+    border: 1px solid #2b383d;
+    border-radius: 5px;
+}
+
+QTabBar::tab {
+    background: #1a2025;
+    border: 1px solid #2b383d;
+    color: #9fb1b6;
+    min-width: 88px;
+    min-height: 26px;
+    padding: 5px 12px;
+}
+
+QTabBar::tab:selected {
+    background: #263036;
+    border-bottom-color: #263036;
+    color: #8fd8d0;
+    font-weight: 700;
+}
+
+QTabBar::tab:hover {
+    color: #f0c879;
+}
+
+QLabel#timeValue,
+QLabel#interfaceValue,
+QLabel#progressValue {
+    background: #0f1417;
+    border: 1px solid #334347;
+    border-radius: 5px;
+    color: #f3fbfc;
+    font-size: 18px;
+    font-weight: 700;
+    min-height: 34px;
+    padding: 4px 10px;
+}
+
+QLabel#progressValue {
+    color: #8fd8d0;
+}
+
+QLabel#stateValue {
+    background: #22282d;
+    border: 1px solid #46545a;
+    border-radius: 5px;
+    color: #dce7ea;
+    font-weight: 700;
+    min-height: 28px;
+    padding: 4px 10px;
+}
+
+QLabel#stateValue[state="idle"] {
+    color: #9fb1b6;
+}
+
+QLabel#stateValue[state="running"] {
+    background: #123b38;
+    border-color: #35bdb1;
+    color: #92fff5;
+}
+
+QLabel#stateValue[state="paused"] {
+    background: #46381e;
+    border-color: #d49a35;
+    color: #ffd98f;
+}
+
+QLabel#stateValue[state="completed"] {
+    background: #243b20;
+    border-color: #73b24f;
+    color: #b7e684;
+}
+
+QLabel#stateValue[state="error"] {
+    background: #4a2222;
+    border-color: #cf5a5a;
+    color: #ffb4b4;
+}
+
+QLabel#messageValue {
+    background: #101519;
+    border: 1px solid #2b383d;
+    border-radius: 5px;
+    color: #9fb1b6;
+    min-height: 58px;
+    padding: 8px;
+}
+
+QStatusBar {
+    background: #11161a;
+    border-top: 1px solid #2b383d;
+    color: #9fb1b6;
 }

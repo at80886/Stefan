@@ -10,6 +10,20 @@ from PyQt6.QtWidgets import QTabWidget, QVBoxLayout, QWidget
 
 from stefan_app.models import SimulationResult
 
+CHART_BACKGROUND_TOP = QColor("#11181c")
+CHART_BACKGROUND_BOTTOM = QColor("#0c1013")
+CHART_BORDER = QColor("#314047")
+CHART_GRID = QColor("#263238")
+CHART_TEXT = QColor("#dce7ea")
+CHART_MUTED = QColor("#8da0a6")
+CHART_AXIS = QColor("#5b6e75")
+CHART_TEAL = QColor("#4be0d4")
+CHART_AMBER = QColor("#f0b34a")
+CHART_RED = QColor("#e45f4d")
+CHART_BLUE = QColor("#4f8df7")
+CHART_HOT_TEXT = QColor("#ff9a83")
+CHART_COOL_TEXT = QColor("#c6ddff")
+
 
 class SimulationPlotWidget(QWidget):
     """Tabbed result display for temperature, interface, and cloud map views."""
@@ -59,9 +73,14 @@ class _ResultCanvas(QWidget):
 
     def _prepare_painter(self, painter: QPainter, title: str) -> QRectF:
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.fillRect(self.rect(), QColor("#ffffff"))
+        background = QLinearGradient(0.0, 0.0, 0.0, float(self.height()))
+        background.setColorAt(0.0, CHART_BACKGROUND_TOP)
+        background.setColorAt(1.0, CHART_BACKGROUND_BOTTOM)
+        painter.fillRect(self.rect(), QBrush(background))
+        painter.setPen(QPen(CHART_BORDER, 1))
+        painter.drawRect(QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5))
         painter.setFont(_chart_font(10))
-        painter.setPen(QColor("#22313a"))
+        painter.setPen(CHART_TEXT)
         title_font = _chart_font(11)
         title_font.setBold(True)
         painter.setFont(title_font)
@@ -70,7 +89,7 @@ class _ResultCanvas(QWidget):
         return self._plot_rect()
 
     def _draw_empty_message(self, painter: QPainter, plot_rect: QRectF) -> None:
-        painter.setPen(QColor("#63717a"))
+        painter.setPen(CHART_MUTED)
         painter.drawText(plot_rect, Qt.AlignmentFlag.AlignCenter, "运行仿真后将在此显示结果。")
 
     def _draw_axes(
@@ -89,7 +108,8 @@ class _ResultCanvas(QWidget):
         y_ticks = _nice_ticks(y_minimum, y_maximum, self.tick_count)
         x_minimum, x_maximum = x_ticks[0], x_ticks[-1]
         y_minimum, y_maximum = y_ticks[0], y_ticks[-1]
-        painter.setPen(QPen(QColor("#c8d1d8"), 1))
+        painter.fillRect(plot_rect, QColor(13, 18, 21, 130))
+        painter.setPen(QPen(CHART_GRID, 1))
         for x_value in x_ticks:
             x = _map_linear(x_value, x_minimum, x_maximum, plot_rect.left(), plot_rect.right())
             painter.drawLine(QPointF(x, plot_rect.top()), QPointF(x, plot_rect.bottom()))
@@ -97,7 +117,7 @@ class _ResultCanvas(QWidget):
             y = _map_linear(y_value, y_minimum, y_maximum, plot_rect.bottom(), plot_rect.top())
             painter.drawLine(QPointF(plot_rect.left(), y), QPointF(plot_rect.right(), y))
 
-        painter.setPen(QPen(QColor("#52616b"), 1))
+        painter.setPen(QPen(CHART_AXIS, 1))
         painter.drawRect(plot_rect)
         for x_value in x_ticks:
             x = _map_linear(x_value, x_minimum, x_maximum, plot_rect.left(), plot_rect.right())
@@ -117,7 +137,7 @@ class _ResultCanvas(QWidget):
                 _format_tick(y_value),
             )
 
-        painter.setPen(QColor("#2f3f46"))
+        painter.setPen(CHART_TEXT)
         painter.drawText(
             QRectF(plot_rect.left(), self.height() - 30, plot_rect.width(), 20),
             Qt.AlignmentFlag.AlignCenter,
@@ -128,7 +148,7 @@ class _ResultCanvas(QWidget):
 
     def _draw_rotated_y_label(self, painter: QPainter, plot_rect: QRectF, label: str) -> None:
         painter.save()
-        painter.setPen(QColor("#2f3f46"))
+        painter.setPen(CHART_TEXT)
         painter.translate(18, plot_rect.center().y())
         painter.rotate(-90)
         painter.drawText(
@@ -166,9 +186,12 @@ class _ResultCanvas(QWidget):
     def _draw_line_legend(self, painter: QPainter, plot_rect: QRectF, color: QColor, label: str) -> None:
         legend_y = plot_rect.top() - 20
         legend_x = plot_rect.right() - 148
+        painter.fillRect(QRectF(legend_x - 10, legend_y - 2, 158, 22), QColor(15, 20, 23, 180))
+        painter.setPen(QPen(CHART_BORDER, 1))
+        painter.drawRect(QRectF(legend_x - 10, legend_y - 2, 158, 22))
         painter.setPen(QPen(color, 2))
         painter.drawLine(QPointF(legend_x, legend_y + 8), QPointF(legend_x + 28, legend_y + 8))
-        painter.setPen(QColor("#2f3f46"))
+        painter.setPen(CHART_TEXT)
         painter.drawText(QRectF(legend_x + 34, legend_y, 114, 18), Qt.AlignmentFlag.AlignLeft, label)
 
 
@@ -213,8 +236,8 @@ class TemperatureDistributionPlot(_ResultCanvas):
             )
             for x, temperature in zip(x_coordinates, temperatures)
         ]
-        self._draw_polyline(painter, points, QColor("#1f77b4"), 2)
-        self._draw_line_legend(painter, plot_rect, QColor("#1f77b4"), "最终温度")
+        self._draw_polyline(painter, points, CHART_TEAL, 2)
+        self._draw_line_legend(painter, plot_rect, CHART_TEAL, "最终温度")
 
 
 class InterfaceTimePlot(_ResultCanvas):
@@ -252,8 +275,8 @@ class InterfaceTimePlot(_ResultCanvas):
             )
             for time, position in zip(self._result.times, self._result.positions)
         ]
-        self._draw_polyline(painter, points, QColor("#d45500"), 2)
-        self._draw_line_legend(painter, plot_rect, QColor("#d45500"), "相界面位置")
+        self._draw_polyline(painter, points, CHART_AMBER, 2)
+        self._draw_line_legend(painter, plot_rect, CHART_AMBER, "相界面位置")
 
 
 class TemperatureCloudPlot(_ResultCanvas):
@@ -318,7 +341,7 @@ class TemperatureCloudPlot(_ResultCanvas):
         x_values = self._result.x_coordinates
         x_edges = _edges(x_values)
         column_indices = _sample_indices(len(x_values), 360)
-        painter.setPen(QPen(QColor("#ffffff"), 1))
+        painter.setPen(QPen(QColor("#11181c"), 1))
         for column_index in column_indices:
             if column_index >= len(final_temperatures):
                 continue
@@ -329,11 +352,11 @@ class TemperatureCloudPlot(_ResultCanvas):
                 _temperature_color(final_temperatures[column_index], temperature_minimum, temperature_maximum),
             )
         highlight = QLinearGradient(domain_rect.topLeft(), domain_rect.bottomLeft())
-        highlight.setColorAt(0.0, QColor(255, 255, 255, 92))
-        highlight.setColorAt(0.45, QColor(255, 255, 255, 24))
-        highlight.setColorAt(1.0, QColor(0, 0, 0, 28))
+        highlight.setColorAt(0.0, QColor(255, 255, 255, 72))
+        highlight.setColorAt(0.45, QColor(255, 255, 255, 18))
+        highlight.setColorAt(1.0, QColor(0, 0, 0, 44))
         painter.fillRect(domain_rect, QBrush(highlight))
-        painter.setPen(QPen(QColor("#24323c"), 1))
+        painter.setPen(QPen(CHART_BORDER, 1))
         painter.drawRect(domain_rect)
 
     def _draw_cloud_annotations(
@@ -349,41 +372,42 @@ class TemperatureCloudPlot(_ResultCanvas):
         interface_x = _map_linear(interface_position, x_minimum, x_maximum, domain_rect.left(), domain_rect.right())
         interface_x = max(domain_rect.left(), min(domain_rect.right(), interface_x))
 
-        painter.setPen(QColor("#24323c"))
+        painter.setPen(CHART_TEXT)
         painter.drawText(
             QRectF(domain_rect.left(), domain_rect.top() - 34, domain_rect.width(), 22),
             Qt.AlignmentFlag.AlignCenter,
             f"最终时刻 t = {self._result.final_time:.4g} s",
         )
-        painter.setPen(QColor("#a83220"))
+        painter.setPen(CHART_HOT_TEXT)
         painter.drawText(
-            QRectF(domain_rect.left(), domain_rect.top() + 12, interface_x - domain_rect.left(), 28),
-            Qt.AlignmentFlag.AlignCenter,
+            QRectF(domain_rect.left() + 8, domain_rect.top() + 12, 82, 28),
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
             "高温区",
         )
-        painter.setPen(QColor("#174a91"))
+        low_label_left = max(interface_x + 18, domain_rect.left() + 104)
+        painter.setPen(CHART_COOL_TEXT)
         painter.drawText(
-            QRectF(interface_x, domain_rect.top() + 12, domain_rect.right() - interface_x, 28),
-            Qt.AlignmentFlag.AlignCenter,
+            QRectF(low_label_left, domain_rect.top() + 12, max(90.0, domain_rect.right() - low_label_left - 8), 28),
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
             "低温区",
         )
 
-        painter.setPen(QPen(QColor("#ffffff"), 5))
+        painter.setPen(QPen(QColor("#f6ffff"), 5))
         painter.drawLine(QPointF(interface_x, domain_rect.top() - 16), QPointF(interface_x, domain_rect.bottom() + 16))
-        painter.setPen(QPen(QColor("#123fbb"), 3))
+        painter.setPen(QPen(CHART_TEAL, 3))
         painter.drawLine(QPointF(interface_x, domain_rect.top() - 18), QPointF(interface_x, domain_rect.bottom() + 18))
-        painter.setPen(QColor("#123fbb"))
+        painter.setPen(CHART_TEAL)
         painter.drawText(
             QRectF(interface_x - 72, domain_rect.top() - 62, 144, 22),
             Qt.AlignmentFlag.AlignCenter,
             "相界面 x = s(t)",
         )
-        painter.setPen(QPen(QColor("#123fbb"), 1))
+        painter.setPen(QPen(CHART_TEAL, 1))
         painter.drawLine(QPointF(interface_x, domain_rect.top() - 40), QPointF(interface_x, domain_rect.top() - 18))
 
     def _draw_cloud_axis(self, painter: QPainter, domain_rect: QRectF, *, x_minimum: float, x_maximum: float) -> None:
         axis_y = domain_rect.bottom() + 30
-        painter.setPen(QPen(QColor("#52616b"), 1))
+        painter.setPen(QPen(CHART_AXIS, 1))
         painter.drawLine(QPointF(domain_rect.left(), axis_y), QPointF(domain_rect.right(), axis_y))
         ticks = _nice_ticks(x_minimum, x_maximum, self.tick_count)
         axis_minimum, axis_maximum = ticks[0], ticks[-1]
@@ -391,7 +415,7 @@ class TemperatureCloudPlot(_ResultCanvas):
             x = _map_linear(x_value, axis_minimum, axis_maximum, domain_rect.left(), domain_rect.right())
             painter.drawLine(QPointF(x, axis_y - 5), QPointF(x, axis_y + 5))
             painter.drawText(QRectF(x - 40, axis_y + 8, 80, 18), Qt.AlignmentFlag.AlignCenter, _format_tick(x_value))
-        painter.setPen(QColor("#2f3f46"))
+        painter.setPen(CHART_TEXT)
         painter.drawText(
             QRectF(domain_rect.left(), axis_y + 34, domain_rect.width(), 20),
             Qt.AlignmentFlag.AlignCenter,
@@ -426,7 +450,7 @@ class TemperatureCloudPlot(_ResultCanvas):
         )
         gradient.setColorAt(1.0, _temperature_color(temperature_minimum, temperature_minimum, temperature_maximum))
         painter.fillRect(bar_rect, QBrush(gradient))
-        painter.setPen(QPen(QColor("#52616b"), 1))
+        painter.setPen(QPen(CHART_AXIS, 1))
         painter.drawRect(bar_rect)
         ticks = _nice_ticks(temperature_minimum, temperature_maximum, self.tick_count)
         axis_minimum, axis_maximum = ticks[0], ticks[-1]
@@ -438,6 +462,7 @@ class TemperatureCloudPlot(_ResultCanvas):
                 Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
                 _format_tick(value),
             )
+        painter.setPen(CHART_TEXT)
         painter.drawText(
             QRectF(bar_rect.left() - 10, bar_rect.top() - 26, 92, 18),
             Qt.AlignmentFlag.AlignLeft,
@@ -558,10 +583,10 @@ def _temperature_color(value: float, minimum: float, maximum: float) -> QColor:
     ratio = (value - minimum) / _nonzero_span(minimum, maximum)
     ratio = max(0.0, min(1.0, ratio))
     stops = (
-        (0.0, QColor("#24499a")),
-        (0.35, QColor("#2fb7c7")),
-        (0.65, QColor("#f4d35e")),
-        (1.0, QColor("#c43c2e")),
+        (0.0, QColor("#315bb4")),
+        (0.35, QColor("#26b7bf")),
+        (0.65, QColor("#f0c45a")),
+        (1.0, QColor("#d94b3d")),
     )
     for (left_ratio, left_color), (right_ratio, right_color) in zip(stops, stops[1:]):
         if left_ratio <= ratio <= right_ratio:

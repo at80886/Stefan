@@ -75,14 +75,20 @@ class MainWindow(QMainWindow):
 
     def _build_widgets(self) -> None:
         container = QWidget(self)
+        container.setObjectName("mainContainer")
         layout = QVBoxLayout(container)
+        layout.setContentsMargins(12, 12, 12, 10)
+        layout.setSpacing(10)
         layout.addWidget(self._build_header())
         layout.addWidget(self._build_workspace(), stretch=1)
         self.setCentralWidget(container)
 
     def _build_header(self) -> QWidget:
         header = QWidget(self)
+        header.setObjectName("appHeader")
         layout = QHBoxLayout(header)
+        layout.setContentsMargins(14, 10, 14, 10)
+        layout.setSpacing(8)
         title = QLabel("一维 Stefan 问题")
         title.setObjectName("appTitle")
         layout.addWidget(title)
@@ -132,7 +138,12 @@ class MainWindow(QMainWindow):
 
     def _build_parameter_panel(self) -> QGroupBox:
         panel = QGroupBox("参数设置", self)
+        panel.setObjectName("parameterPanel")
         layout = QFormLayout(panel)
+        layout.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
+        layout.setFormAlignment(Qt.AlignmentFlag.AlignTop)
+        layout.setHorizontalSpacing(12)
+        layout.setVerticalSpacing(8)
 
         self.domain_length_input = self._double_input(0.001, 1000.0, 1.0, 6)
         self.node_count_input = self._integer_input(3, 5001, 101)
@@ -166,20 +177,35 @@ class MainWindow(QMainWindow):
 
     def _build_plot_panel(self) -> QGroupBox:
         panel = QGroupBox("结果预览", self)
+        panel.setObjectName("plotPanel")
         panel.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         layout = QVBoxLayout(panel)
+        layout.setContentsMargins(10, 12, 10, 10)
         self.plot_widget = SimulationPlotWidget(panel)
         layout.addWidget(self.plot_widget)
         return panel
 
     def _build_status_panel(self) -> QGroupBox:
         panel = QGroupBox("仿真状态", self)
+        panel.setObjectName("statusPanel")
         layout = QFormLayout(panel)
+        layout.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
+        layout.setFormAlignment(Qt.AlignmentFlag.AlignTop)
+        layout.setHorizontalSpacing(10)
+        layout.setVerticalSpacing(10)
         self.time_value = QLabel("0.000000 s", self)
         self.interface_value = QLabel("0.000000 m", self)
         self.progress_value = QLabel("0%", self)
         self.state_value = QLabel("空闲", self)
         self.message_value = QLabel("", self)
+        self.time_value.setObjectName("timeValue")
+        self.interface_value.setObjectName("interfaceValue")
+        self.progress_value.setObjectName("progressValue")
+        self.state_value.setObjectName("stateValue")
+        self.message_value.setObjectName("messageValue")
+        self.state_value.setProperty("state", "idle")
+        for widget in (self.time_value, self.interface_value, self.progress_value, self.state_value):
+            widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.message_value.setWordWrap(True)
         for label, widget in (
             ("时间", self.time_value),
@@ -335,12 +361,12 @@ class MainWindow(QMainWindow):
         if self._is_paused:
             self._worker.pause()
             self.pause_button.setText("继续")
-            self.state_value.setText("已暂停")
+            self._set_state_indicator("已暂停", "paused")
             self.statusBar().showMessage("已暂停")
         else:
             self._worker.resume()
             self.pause_button.setText("暂停")
-            self.state_value.setText("运行中")
+            self._set_state_indicator("运行中", "running")
             self.statusBar().showMessage("运行中")
 
     def _reset_simulation(self) -> None:
@@ -363,7 +389,10 @@ class MainWindow(QMainWindow):
         self.time_value.setText(f"{state.time:.6f} s")
         self.interface_value.setText(f"{state.interface_position:.6f} m")
         self.progress_value.setText(f"{state.progress * 100:.0f}%")
-        self.state_value.setText("运行中" if state.status == "running" else "已完成")
+        if state.status == "running":
+            self._set_state_indicator("运行中", "running")
+        else:
+            self._set_state_indicator("已完成", "completed")
         self.message_value.setText(state.message or "正在运行仿真...")
         self._append_realtime_state(state)
         self._maybe_refresh_realtime_plot(state)
@@ -375,7 +404,7 @@ class MainWindow(QMainWindow):
         self.time_value.setText(f"{summary.final_time:.6f} s")
         self.interface_value.setText(f"{summary.final_interface_position:.6f} m")
         self.progress_value.setText("100%")
-        self.state_value.setText("已完成")
+        self._set_state_indicator("已完成", "completed")
         self._update_message(summary.message or result.message)
         self.start_button.setText("重新运行")
         self.export_button.setEnabled(True)
@@ -430,7 +459,7 @@ class MainWindow(QMainWindow):
             self._suppress_stop_error = False
             return
         self._update_message(message)
-        self.state_value.setText("错误")
+        self._set_state_indicator("错误", "error")
         self.statusBar().showMessage("错误")
         self.simulation_failed.emit(message)
 
@@ -439,14 +468,14 @@ class MainWindow(QMainWindow):
         self._worker = None
         self._set_controls_running(False)
         if self._last_result is None and self.state_value.text() not in {"错误", "空闲"}:
-            self.state_value.setText("空闲")
+            self._set_state_indicator("空闲", "idle")
             self.statusBar().showMessage("就绪")
 
     def _set_idle_state(self) -> None:
         self.time_value.setText("0.000000 s")
         self.interface_value.setText("0.000000 m")
         self.progress_value.setText("0%")
-        self.state_value.setText("空闲")
+        self._set_state_indicator("空闲", "idle")
         self.message_value.setText("")
         self.start_button.setText("开始")
         self.statusBar().showMessage("就绪")
@@ -477,6 +506,14 @@ class MainWindow(QMainWindow):
 
     def _update_message(self, message: str) -> None:
         self.message_value.setText(message)
+
+    def _set_state_indicator(self, text: str, state: str) -> None:
+        self.state_value.setText(text)
+        self.state_value.setProperty("state", state)
+        style = self.state_value.style()
+        style.unpolish(self.state_value)
+        style.polish(self.state_value)
+        self.state_value.update()
 
     def _export_result(self) -> None:
         if self._last_result is None:
