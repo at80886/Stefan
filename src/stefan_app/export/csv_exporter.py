@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from stefan_app.models import SimulationResult, StefanParameters
-from stefan_app.models.case_io import save_parameters_json
+from stefan_app.models.case_io import parameters_to_dict, save_parameters_json
 from stefan_app.utils.exceptions import StefanAppError
 
 CSV_ENCODING = "utf-8"
@@ -50,7 +50,7 @@ def export_result_bundle(
     try:
         target_directory.mkdir(parents=True, exist_ok=True)
         parameter_file = save_parameters_json(parameters, target_directory / "parameters.json")
-        summary_file = _write_summary_csv(result, target_directory / "summary.csv")
+        summary_file = _write_summary_csv(result, parameters, target_directory / "summary.csv")
         interface_file = export_result_csv(result, target_directory / "interface.csv")
         temperature_file = _write_temperature_distribution_csv(
             result,
@@ -69,13 +69,10 @@ def export_result_bundle(
     )
 
 
-def _write_summary_csv(result: SimulationResult, target: Path) -> Path:
+def _write_summary_csv(result: SimulationResult, parameters: StefanParameters, target: Path) -> Path:
     summary = result.summarize()
-    rows = (
-        ("final_time", summary.final_time),
+    rows = tuple(parameters_to_dict(parameters).items()) + (
         ("final_interface_position", summary.final_interface_position),
-        ("minimum_temperature", summary.minimum_temperature),
-        ("maximum_temperature", summary.maximum_temperature),
     )
     with target.open("w", newline="", encoding=CSV_ENCODING_WITH_SIGNATURE) as file:
         writer = csv.writer(file)

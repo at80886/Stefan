@@ -16,7 +16,7 @@
 导出结果以目录形式保存，包含以下文件：
 
 - `parameters.json`：本次仿真使用的参数。
-- `summary.csv`：最终时间、最终相界面位置和温度范围。
+- `summary.csv`：全部参数设置和最终相界面位置。
 - `interface.csv`：时间与相界面位置历史。
 - `temperature.csv`：最终时刻的空间温度分布。
 

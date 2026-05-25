@@ -66,10 +66,17 @@ class ExportAndCaseTests(unittest.TestCase):
         self.assertTrue(summary_has_utf8_signature)
         self.assertEqual(parameter_payload["node_count"], parameters.node_count)
         self.assertIn(["metric", "value"], summary_rows)
-        self.assertEqual(
-            {row[0] for row in summary_rows[1:]},
-            {"final_time", "final_interface_position", "minimum_temperature", "maximum_temperature"},
+        summary_payload = {row[0]: row[1] for row in summary_rows[1:]}
+        for key, value in parameters_to_dict(parameters).items():
+            self.assertIn(key, summary_payload)
+            self.assertAlmostEqual(float(summary_payload[key]), value)
+        self.assertAlmostEqual(
+            float(summary_payload["final_interface_position"]),
+            result.final_interface_position,
         )
+        self.assertNotIn("final_time", summary_payload)
+        self.assertNotIn("minimum_temperature", summary_payload)
+        self.assertNotIn("maximum_temperature", summary_payload)
         self.assertEqual(interface_rows[0], ["time", "interface_position"])
         self.assertEqual(len(interface_rows), len(result.times) + 1)
         self.assertEqual(temperature_rows[0], ["x", "temperature"])
